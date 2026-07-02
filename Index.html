@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusSync Prototype</title>
+    <style>
+        :root {
+            --primary: #1E3A8A; /* Navy Blue */
+            --primary-light: #3B82F6; /* Bright Blue */
+            --secondary: #F59E0B; /* Amber/Orange for alerts */
+            --dark: #1F2937;
+            --gray: #6B7280;
+            --light-gray: #E5E7EB;
+            --bg: #F3F4F6;
+            --white: #FFFFFF;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        body { background-color: #333; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+
+        .phone-container {
+            width: 375px; height: 812px; background-color: var(--white);
+            border-radius: 40px; overflow: hidden; position: relative;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 8px solid #000;
+        }
+
+        .screen { width: 100%; height: 100%; display: none; flex-direction: column; background-color: var(--bg); overflow-y: auto; overflow-x: hidden; }
+        .screen.active { display: flex; animation: fadeIn 0.3s ease-in-out; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* Reusable UI Components */
+        .header-top { padding: 40px 20px 20px 20px; background-color: var(--primary); color: white; display: flex; align-items: center; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .btn-back { background: none; border: none; font-size: 24px; cursor: pointer; color: white; margin-right: 15px; }
+        .header-title { font-size: 18px; font-weight: 600; }
+
+        .btn-primary { background-color: var(--primary-light); color: var(--white); border: none; padding: 15px; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; transition: background 0.2s; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3); }
+        .btn-primary:active { background-color: var(--primary); }
+
+        .bottom-nav { position: absolute; bottom: 0; width: 100%; height: 70px; background-color: var(--white); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid var(--light-gray); z-index: 100; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: var(--gray); font-size: 11px; gap: 4px; cursor: pointer; }
+        .nav-item.active { color: var(--primary); }
+        .nav-icon { font-size: 20px; }
+
+        /* --- Screen 1: Login --- */
+        #login-screen { background-color: var(--primary); padding: 40px 20px; justify-content: center; align-items: center; color: white; }
+        .logo-circle { width: 100px; height: 100px; background-color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 40px; margin-bottom: 20px; color: var(--primary); font-weight: bold; }
+        .app-name { font-size: 32px; font-weight: 800; margin-bottom: 5px; }
+        .app-tag { font-size: 14px; opacity: 0.8; margin-bottom: 60px; }
+        .login-card { background-color: white; width: 100%; padding: 30px 20px; border-radius: 20px; color: var(--dark); text-align: center; }
+        .login-card h3 { margin-bottom: 20px; font-size: 18px; }
+        
+        /* --- Screen 2: Dashboard --- */
+        #dashboard-screen { padding-bottom: 80px; }
+        .dash-header-bg { background-color: var(--primary); padding: 50px 20px 80px 20px; color: white; border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; }
+        .greeting { font-size: 24px; font-weight: 700; margin-bottom: 5px; }
+        .date-text { font-size: 14px; opacity: 0.8; }
+        
+        .up-next-card { background-color: white; margin: -50px 20px 20px 20px; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); position: relative; z-index: 5; border-left: 5px solid var(--secondary); }
+        .badge-next { display: inline-block; background-color: rgba(245, 158, 11, 0.1); color: var(--secondary); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; margin-bottom: 10px; }
+        .class-title { font-size: 18px; font-weight: 700; color: var(--dark); margin-bottom: 5px; }
+        .class-time { font-size: 14px; color: var(--gray); font-weight: 600; margin-bottom: 15px; display: flex; align-items: center; gap: 5px; }
+        .room-tag { background-color: var(--bg); padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--primary); display: inline-block; }
+
+        .section-title { font-size: 16px; font-weight: 700; margin: 10px 20px; color: var(--dark); }
+        
+        .timeline { padding: 0 20px; margin-top: 15px; }
+        .timeline-item { display: flex; gap: 15px; margin-bottom: 20px; }
+        .time-col { width: 45px; text-align: right; font-size: 12px; font-weight: 600; color: var(--gray); padding-top: 5px; }
+        .line-col { width: 20px; display: flex; flex-direction: column; align-items: center; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; background-color: var(--light-gray); border: 2px solid white; box-shadow: 0 0 0 1px var(--light-gray); }
+        .dot.active { background-color: var(--primary-light); box-shadow: 0 0 0 1px var(--primary-light); }
+        .line { width: 2px; height: 100%; background-color: var(--light-gray); margin-top: 5px; }
+        .card-col { flex: 1; background-color: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); cursor: pointer; border-left: 3px solid transparent; }
+        .card-col.active { border-left-color: var(--primary-light); }
+        .card-col.done { opacity: 0.6; }
+        .t-title { font-weight: 600; font-size: 14px; margin-bottom: 3px; }
+        .t-room { font-size: 12px; color: var(--gray); }
+
+        /* --- Screen 3: Detail Course --- */
+        #detail-screen { padding-bottom: 20px; }
+        .course-hero { background-color: white; padding: 20px; margin-bottom: 10px; }
+        .c-code { font-size: 12px; color: var(--primary-light); font-weight: bold; letter-spacing: 1px; margin-bottom: 5px; }
+        .c-title { font-size: 22px; font-weight: 800; color: var(--dark); line-height: 1.2; margin-bottom: 15px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .info-box { background-color: var(--bg); padding: 12px; border-radius: 10px; }
+        .i-label { font-size: 11px; color: var(--gray); margin-bottom: 3px; }
+        .i-val { font-size: 13px; font-weight: 600; color: var(--dark); }
+
+        .tabs { display: flex; background-color: white; border-bottom: 1px solid var(--light-gray); }
+        .tab { flex: 1; text-align: center; padding: 15px 0; font-size: 14px; font-weight: 600; color: var(--gray); border-bottom: 2px solid transparent; cursor: pointer; }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .tasks-container { padding: 20px; }
+        .task-item { background-color: white; padding: 15px; border-radius: 12px; display: flex; align-items: flex-start; gap: 15px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .checkbox { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--light-gray); flex-shrink: 0; margin-top: 2px; }
+        .task-info { flex: 1; }
+        .task-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+        .task-deadline { font-size: 12px; color: var(--secondary); font-weight: 600; display: inline-block; padding: 2px 6px; background-color: rgba(245, 158, 11, 0.1); border-radius: 4px; }
+        .fab-add { position: absolute; bottom: 30px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background-color: var(--primary-light); color: white; font-size: 28px; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4); border: none; cursor: pointer; }
+
+        /* --- Screen 4: Calendar --- */
+        #calendar-screen { padding-bottom: 80px; }
+        .month-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background-color: white; }
+        .m-title { font-size: 18px; font-weight: 700; }
+        
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; padding: 10px 20px 20px 20px; background-color: white; }
+        .cal-day-name { text-align: center; font-size: 11px; font-weight: 600; color: var(--gray); margin-bottom: 10px; }
+        .cal-date { height: 40px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 14px; font-weight: 500; border-radius: 10px; position: relative; }
+        .cal-date.active { background-color: var(--primary); color: white; }
+        .cal-date.muted { color: var(--light-gray); }
+        .dots { display: flex; gap: 3px; position: absolute; bottom: 4px; }
+        .cal-dot { width: 4px; height: 4px; border-radius: 50%; }
+        .dot-blue { background-color: var(--primary-light); }
+        .dot-orange { background-color: var(--secondary); }
+        
+        .day-events { padding: 20px; }
+        .event-card { background-color: white; border-left: 4px solid var(--secondary); padding: 15px; border-radius: 8px; margin-bottom: 12px; }
+        .e-time { font-size: 12px; color: var(--secondary); font-weight: bold; margin-bottom: 3px; }
+        .e-title { font-size: 14px; font-weight: 600; }
+
+        /* --- Screen 5: Notifications --- */
+        .notif-list { padding: 15px; }
+        .notif-item { background-color: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; gap: 15px; }
+        .notif-item.unread { background-color: #EFF6FF; border: 1px solid #BFDBFE; }
+        .n-icon { width: 40px; height: 40px; border-radius: 50%; background-color: rgba(245, 158, 11, 0.1); color: var(--secondary); display: flex; justify-content: center; align-items: center; font-size: 18px; flex-shrink: 0; }
+        .n-content { flex: 1; }
+        .n-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--dark); }
+        .n-desc { font-size: 12px; color: var(--gray); line-height: 1.4; }
+        .n-time { font-size: 11px; color: var(--gray); margin-top: 5px; }
+
+    </style>
+</head>
+<body>
+
+    <div class="phone-container">
+        
+        <!-- Screen 1: Login -->
+        <div id="login-screen" class="screen active">
+            <div class="logo-circle">CS</div>
+            <div class="app-name">CampusSync</div>
+            <div class="app-tag">Your Academic Life in Sync</div>
+            
+            <div class="login-card">
+                <h3>Login Mahasiswa</h3>
+                <button class="btn-primary" onclick="navTo('dashboard-screen')" style="display: flex; justify-content: center; align-items: center; gap: 10px;">
+                    <span style="font-size: 20px;">🎓</span> Login via Portal Kampus (SSO)
+                </button>
+                <p style="font-size: 12px; color: var(--gray); margin-top: 15px;">Gunakan NIM dan Password akademik Anda.</p>
+            </div>
+        </div>
+
+        <!-- Screen 2: Dashboard -->
+        <div id="dashboard-screen" class="screen">
+            <div class="dash-header-bg">
+                <div class="greeting">Halo, Herbima! 👋</div>
+                <div class="date-text">Senin, 15 November 2026</div>
+            </div>
+
+            <div class="up-next-card" onclick="navTo('detail-screen')">
+                <div class="badge-next">UP NEXT • IN 45 MINS</div>
+                <div class="class-title">Interaksi Manusia & Komputer</div>
+                <div class="class-time">🕒 10:00 - 12:30 WIB</div>
+                <div class="room-tag">📍 Ruang Lab Komputer 4</div>
+            </div>
+
+            <div class="section-title">Jadwal Hari Ini</div>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="time-col">07:30</div>
+                    <div class="line-col">
+                        <div class="dot"></div>
+                        <div class="line"></div>
+                    </div>
+                    <div class="card-col done">
+                        <div class="t-title">Kecerdasan Buatan</div>
+                        <div class="t-room">Ruang A.204</div>
+                    </div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="time-col" style="color: var(--primary-light);">10:00</div>
+                    <div class="line-col">
+                        <div class="dot active"></div>
+                        <div class="line"></div>
+                    </div>
+                    <div class="card-col active" onclick="navTo('detail-screen')">
+                        <div class="t-title" style="color: var(--primary-light);">Interaksi Manusia & Komputer</div>
+                        <div class="t-room">Ruang Lab Komputer 4</div>
+                    </div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="time-col">13:00</div>
+                    <div class="line-col">
+                        <div class="dot"></div>
+                    </div>
+                    <div class="card-col">
+                        <div class="t-title">Rekayasa Perangkat Lunak</div>
+                        <div class="t-room">Ruang B.102</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bottom-nav">
+                <div class="nav-item active"><div class="nav-icon">🏠</div><span>Home</span></div>
+                <div class="nav-item" onclick="navTo('calendar-screen')"><div class="nav-icon">📅</div><span>Calendar</span></div>
+                <div class="nav-item"><div class="nav-icon">📝</div><span>Tasks</span></div>
+                <div class="nav-item" onclick="navTo('notif-screen')"><div class="nav-icon">🔔</div><span>Alerts</span></div>
+            </div>
+        </div>
+
+        <!-- Screen 3: Detail Course -->
+        <div id="detail-screen" class="screen">
+            <div class="header-top">
+                <button class="btn-back" onclick="navTo('dashboard-screen')">←</button>
+                <div class="header-title">Detail Kelas</div>
+            </div>
+
+            <div class="course-hero">
+                <div class="c-code">TIF302 • 3 SKS</div>
+                <div class="c-title">Interaksi Manusia & Komputer</div>
+                <div class="info-grid">
+                    <div class="info-box">
+                        <div class="i-label">Dosen Pengampu</div>
+                        <div class="i-val">Dr. Budi Santoso, M.Kom</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="i-label">Ruangan</div>
+                        <div class="i-val">Lab Komputer 4</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <div class="tab">Info & Silabus</div>
+                <div class="tab active">To-Do List (2)</div>
+            </div>
+
+            <div class="tasks-container">
+                <div class="task-item">
+                    <div class="checkbox"></div>
+                    <div class="task-info">
+                        <div class="task-title">Kumpulkan Laporan Wireframe</div>
+                        <div class="task-deadline">⚠ Besok, 23:59 WIB</div>
+                    </div>
+                </div>
+                <div class="task-item">
+                    <div class="checkbox"></div>
+                    <div class="task-info">
+                        <div class="task-title">Baca Jurnal Usability Testing</div>
+                        <div class="task-deadline" style="background-color: var(--light-gray); color: var(--gray);">Kamis, 18 Nov</div>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="fab-add">+</button>
+        </div>
+
+        <!-- Screen 4: Calendar -->
+        <div id="calendar-screen" class="screen">
+            <div class="header-top">
+                <div class="header-title" style="margin: 0 auto;">Kalender Akademik</div>
+            </div>
+
+            <div class="month-header">
+                <div style="font-size: 20px; font-weight: bold; color: var(--gray);">❮</div>
+                <div class="m-title">November 2026</div>
+                <div style="font-size: 20px; font-weight: bold; color: var(--gray);">❯</div>
+            </div>
+
+            <div class="cal-grid">
+                <div class="cal-day-name">Sn</div><div class="cal-day-name">Sl</div><div class="cal-day-name">Rb</div><div class="cal-day-name">Km</div><div class="cal-day-name">Jm</div><div class="cal-day-name">Sb</div><div class="cal-day-name">Mg</div>
+                
+                <!-- Week 1 -->
+                <div class="cal-date muted">1</div><div class="cal-date muted">2</div><div class="cal-date muted">3</div><div class="cal-date">4</div><div class="cal-date">5</div><div class="cal-date">6</div><div class="cal-date">7</div>
+                <!-- Week 2 -->
+                <div class="cal-date">8</div><div class="cal-date">9</div><div class="cal-date">10<div class="dots"><div class="cal-dot dot-blue"></div></div></div><div class="cal-date">11</div><div class="cal-date">12</div><div class="cal-date">13</div><div class="cal-date">14</div>
+                <!-- Week 3 -->
+                <div class="cal-date active">15<div class="dots"><div class="cal-dot dot-blue"></div><div class="cal-dot dot-orange"></div></div></div><div class="cal-date">16</div><div class="cal-date">17</div><div class="cal-date">18<div class="dots"><div class="cal-dot dot-orange"></div></div></div><div class="cal-date">19</div><div class="cal-date">20</div><div class="cal-date">21</div>
+            </div>
+
+            <div class="section-title">Agenda Tgl 15 Nov</div>
+            <div class="day-events">
+                <div class="event-card" style="border-left-color: var(--primary-light);">
+                    <div class="e-time">10:00 - 12:30</div>
+                    <div class="e-title">Kelas: Interaksi Manusia & Komputer</div>
+                </div>
+                <div class="event-card">
+                    <div class="e-time">23:59 DEADLINE</div>
+                    <div class="e-title">Tugas: Kumpulkan Laporan Wireframe</div>
+                </div>
+            </div>
+
+            <div class="bottom-nav">
+                <div class="nav-item" onclick="navTo('dashboard-screen')"><div class="nav-icon">🏠</div><span>Home</span></div>
+                <div class="nav-item active"><div class="nav-icon">📅</div><span>Calendar</span></div>
+                <div class="nav-item"><div class="nav-icon">📝</div><span>Tasks</span></div>
+                <div class="nav-item" onclick="navTo('notif-screen')"><div class="nav-icon">🔔</div><span>Alerts</span></div>
+            </div>
+        </div>
+
+        <!-- Screen 5: Notifications -->
+        <div id="notif-screen" class="screen">
+            <div class="header-top">
+                <button class="btn-back" onclick="navTo('dashboard-screen')">←</button>
+                <div class="header-title">Notifikasi & Alarm</div>
+            </div>
+
+            <div class="notif-list">
+                <div class="notif-item unread">
+                    <div class="n-icon">⚠</div>
+                    <div class="n-content">
+                        <div class="n-title">Pindah Ruangan!</div>
+                        <div class="n-desc">Kelas <b>Rekayasa Perangkat Lunak</b> (13:00) dipindahkan ke <b>Ruang B.105</b>.</div>
+                        <div class="n-time">10 Menit yang lalu</div>
+                    </div>
+                </div>
+                
+                <div class="notif-item unread">
+                    <div class="n-icon" style="background-color: #DBEAFE; color: var(--primary-light);">🕒</div>
+                    <div class="n-content">
+                        <div class="n-title">Kelas Segera Dimulai</div>
+                        <div class="n-desc">Kelas IMK di Lab Komputer 4 akan dimulai dalam 45 menit. Segera bersiap!</div>
+                        <div class="n-time">1 Jam yang lalu</div>
+                    </div>
+                </div>
+
+                <div class="notif-item">
+                    <div class="n-icon" style="background-color: #FEE2E2; color: #EF4444;">🔥</div>
+                    <div class="n-content">
+                        <div class="n-title">Deadline Besok!</div>
+                        <div class="n-desc">Tugas 'Laporan Wireframe' (IMK) harus dikumpulkan besok pukul 23:59.</div>
+                        <div class="n-time">Kemarin, 20:00</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function navTo(screenId) {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            document.getElementById(screenId).scrollTop = 0;
+        }
+    </script>
+</body>
+</html>
